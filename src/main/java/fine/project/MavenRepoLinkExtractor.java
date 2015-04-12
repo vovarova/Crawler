@@ -1,5 +1,7 @@
 package fine.project;
 
+import java.io.IOException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -15,7 +17,7 @@ import org.jsoup.select.Elements;
 
 public class MavenRepoLinkExtractor implements LinkExtractor {
 	private HttpClient httpclient;
-	
+
 	public MavenRepoLinkExtractor(HttpClient httpclient) {
 		this.httpclient = httpclient;
 	}
@@ -26,20 +28,25 @@ public class MavenRepoLinkExtractor implements LinkExtractor {
 		HttpResponse httpResponse = httpclient.execute(httpGet);
 		HttpEntity entity = httpResponse.getEntity();
 		if (entity != null) {
-			ContentType contentType = ContentType.getOrDefault(entity);
-			/*if (ContentType.TEXT_HTML == contentType) {*/
+			ContentType contentType = ContentType.get(entity);
+			System.out.println("url " + url + " #" + contentType);
+			if (contentType!=null && ContentType.TEXT_HTML.getMimeType().equals(contentType.getMimeType())) {
 				String content = EntityUtils.toString(entity);
 				Elements linkElements = Jsoup.parse(content).select("a[href]");
 				for (Element element : linkElements) {
-					String href = element.attr("abs:href");
-					links.add(href);
+					String href = element.attr("href");
+					links.add(new URL(new URL(url), href).toExternalForm());
 				}
 
-			}/* else {
-				EntityUtils.toByteArray(entity);
-			}*/
+			} else {
+				try{					
+					EntityUtils.toByteArray(entity);
+				}catch(IOException e){
+					throw new IOException("Error while processing "+url , e);
+				}
+			}
 			EntityUtils.consume(entity);
-//		}
+		}
 		return links;
 
 	}
